@@ -17,7 +17,9 @@ struct point* init_point(int x, int y);
 
 void free_point(struct point** p);
 
-struct point_set* init_point_set(int reg, size_t points_num, ...);
+struct point_set* linit_point_set(int reg, size_t points_num, ...);
+
+struct point_set* sinit_point_set(char* string);
 
 void free_point_set(struct point_set** points);
 
