@@ -1,0 +1,6 @@
+#!/bin/bash
+
+BIN="./main"
+SETTINGS="settings.txt"
+echo "\"$BIN\" "$1" & gnuplot -p $SETTINGS"
+$BIN "$1" & gnuplot -p $SETTINGS
