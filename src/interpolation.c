@@ -1,7 +1,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
-#include "interpolation.h"
+#include <include/interpolation.h>
 
 /* initialize `point` structure */
 struct point* init_point(int x, int y)
@@ -185,13 +185,13 @@ double lagrange_basis(struct point_set* points, size_t j, double x)
  */
 double lagrange_interpolation(struct point_set* points, double x)
 {
-    double temp = 0, res = 1;
+    double res = 1;
 
-    if (!points || !points->set)
+    if (points == NULL || points->set == NULL)
         return 0;
 
     for (size_t i = 0; i < points->size; ++i) {
-        temp = lagrange_basis(points, i, x);
+        double temp = lagrange_basis(points, i, x);
         if (temp)
             temp = points->set[i]->y_coord * temp;
         else
