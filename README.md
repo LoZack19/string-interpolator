@@ -1,67 +1,122 @@
-# Interpolation Library
+# Lagrange Interpolation Library
 
-This C library provides functionality for point-based interpolation, specifically implementing Lagrange interpolation.
+This library provides basic functionality for creating, managing, and manipulating sets of 2D points, as well as performing Lagrange interpolation based on these points.
 
 ## Features
 
-- Point and point set management
-- Lagrange interpolation calculation
+- **Point Management**:
+  - Create and free individual points.
+  - Create and manage dynamic arrays of points.
+  - Push and pop points from the dynamic array with automatic resizing.
+  
+- **Lagrange Interpolation**:
+  - Calculate the Lagrange basis polynomial.
+  - Perform Lagrange interpolation for a given `x` value.
 
-## Structures
+## Getting Started
 
-### Point
-Represents a single point with x and y coordinates.
+### Prerequisites
 
-### Point Set
-A collection of points used for interpolation.
+- C Compiler (GCC, Clang, etc.)
+- Standard C library (`stdlib.h`, `string.h`, `stdarg.h`, `stdio.h`)
 
-## Functions
+### Compilation
 
-### Point Management
-- `init_point`: Initialize a new point
-- `free_point`: Free memory allocated for a point
-
-### Point Set Management
-- `vinit_point_set`: Initialize a set of points using va_list
-- `linit_point_set`: Initialize a set of points with a variable number of arguments
-- `init_point_set`: Initialize a set of points from an array of numbers
-- `sinit_point_set`: Initialize a set of points from a string
-- `free_point_set`: Free memory allocated for a point set
-
-### Interpolation
-- `lagrange_basis`: Calculate the basis polynomial of the Lagrange interpolation
-- `lagrange_interpolation`: Calculate the result of the Lagrange interpolation for a given x
-
-## Usage
-
-1. Include the header file in your C program:
-   ```c
-   #include "interpolation.h"
-   ```
-
-2. Create points or point sets using the provided initialization functions.
-
-3. Use the Lagrange interpolation functions to perform calculations.
-
-4. Free allocated memory using the provided free functions when done.
-
-## Example
+Include the necessary headers and compile your C program with the provided source files.
 
 ```c
-#include "interpolation.h"
+#include <stdarg.h>
+#include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
+#include "interpolation.h"
+```
 
-int main() {
-    struct point_set* points = linit_point_set(0, 3, 1, 1, 2, 4, 3, 9);
-    if (points) {
-        double result = lagrange_interpolation(points, 2.5);
-        printf("Interpolated value at x=2.5: %f\n", result);
-        free_point_set(&points);
-    }
-    return 0;
+### Example Usage
+
+#### Creating and Managing Points
+
+```c
+struct point* p = point_create(2, 3);
+if (p != NULL) {
+    point_display(p, stdout);  // Output: {2, 3}
+    point_free(p);
+}
+
+struct points* ps = points_create(10);
+if (ps != NULL) {
+    points_push(ps, point_create(1, 2));
+    points_push(ps, point_create(2, 4));
+    struct point* last_point = points_pop(ps);
+    point_display(last_point, stdout); // Output: {2, 4}
+    point_free(last_point);
+    points_free(ps);
 }
 ```
 
-## Note
+#### Performing Lagrange Interpolation
 
-This library uses dynamic memory allocation. Always check the return values of initialization functions and free the allocated memory when it's no longer needed to prevent memory leaks.
+```c
+struct points* ps = points_create(3);
+points_push(ps, point_create(0, 1));
+points_push(ps, point_create(1, 3));
+points_push(ps, point_create(2, 2));
+
+double result = lagrange_interpolation(ps, 1.5);
+printf("Lagrange interpolation at x = 1.5: %f\n", result);
+
+points_free(ps);
+```
+
+### Functions
+
+#### Point Management
+
+- **`struct point* point_create(int x, int y);`**  
+  Creates a new point with coordinates `(x, y)`.
+
+- **`void point_free(struct point* p);`**  
+  Frees the memory allocated for a point.
+
+- **`void point_display(struct point *p, FILE *outfile);`**  
+  Displays the coordinates of a point in the format `{x, y}`.
+
+#### Points Array Management
+
+- **`struct points* points_create(size_t initial_capacity);`**  
+  Creates a dynamic array of points with an initial capacity.
+
+- **`void points_free(struct points* ps);`**  
+  Frees the memory allocated for the points array and all its points.
+
+- **`int points_push(struct points *ps, struct point *p);`**  
+  Adds a new point to the array, resizing if necessary.
+
+- **`struct point* points_pop(struct points *ps);`**  
+  Removes and returns the last point from the array.
+
+#### Lagrange Interpolation
+
+- **`double lagrange_basis(struct points* points, size_t j, double x);`**  
+  Computes the Lagrange basis polynomial for a given `x`.
+
+- **`double lagrange_interpolation(struct points* points, double x);`**  
+  Performs Lagrange interpolation to compute the value at `x`.
+
+### Error Handling
+
+- Functions that return pointers (`struct point*`, `struct points*`) will return `NULL` on failure.
+- Functions that return integers (`int`) will return `EXIT_SUCCESS` (0) on success and `EXIT_FAILURE` (1) on failure.
+
+
+### Contributing
+
+Contributions are welcome! Please fork the repository and create a pull request for any enhancements, bug fixes, or additional features.
+
+### Contact
+
+For any questions or issues, please open an issue on the GitHub repository or contact the maintainer.
+
+---
+
+This library aims to provide a simple and efficient way to perform Lagrange interpolation in C. Feel free to extend its functionality or adapt it to your specific needs.
