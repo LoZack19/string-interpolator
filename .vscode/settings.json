@@ -1,6 +1,5 @@
 {
     "files.associations": {
-        "stddef.h": "c",
         "interpolation.h": "c"
     }
 }
