@@ -1,31 +1,46 @@
 #ifndef INTERPOLATION_H
 #define INTERPOLATION_H
 
+#define OWN(X) (X)
+#define BORROW(X) (X)
+#define DISOWN(X) (X)
+#define OWNED(X) (X)
+#define BORROWED(X) (X)
+
 #include <stddef.h>
+#include <stdio.h>
+#include <stdbool.h>
 
 struct point {
-    int x_coord;
-    int y_coord;
+    int x;
+    int y;
 };
 
-struct point_set {
-    struct point**  set;
-    size_t          size;
+struct point* point_create(int x, int y);
+void point_free(struct point* p);
+void point_display(struct point *p, FILE *outfile);
+
+struct points {
+    struct point *OWNED(*list);
+    size_t capacity;
+    size_t length;
 };
 
-struct point* init_point(int x, int y);
+struct points *points_create(size_t initial_capacity);
+void points_free(struct points* ps);
 
-void free_point(struct point** p);
+struct points* points_init(const bool reg, const size_t points_num, const int list[]);
+struct points* points_linit(const bool reg, const size_t points_num, ...);
+struct points* points_sinit(char* string);
 
-struct point_set* linit_point_set(int reg, size_t points_num, ...);
+/* Stack behavior */
+int points_is_full(struct points *ps);
+int points_is_empty(struct points *ps);
+int points_logresize(struct points *ps);
+int points_push(struct points *ps, struct point *p);
+struct point *points_pop(struct points *ps);
 
-struct point_set* sinit_point_set(char* string);
-
-void free_point_set(struct point_set** points);
-
-
-double lagrange_basis(struct point_set* points, size_t j, double x);
-
-double lagrange_interpolation(struct point_set* points, double x);
+double lagrange_basis(struct points* points, size_t j, double x);
+double lagrange_interpolation(struct points* points, double x);
 
 #endif

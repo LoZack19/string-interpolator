@@ -2,11 +2,19 @@
 #include <stdio.h>
 
 int main() {
-    struct point_set* points = linit_point_set(0, 3, 1, 1, 2, 4, 3, 9);
-    if (points) {
-        double result = lagrange_interpolation(points, 2.5);
-        printf("Interpolated value at x=2.5: %f\n", result);
-        free_point_set(&points);
+    struct points* points = points_linit(true, 8, 0, 3, 1, 1, 2, 4, 3, 9);
+
+    // for (size_t i = 0; i < points->length; i++) {
+    //     fprintf(stdout, "%ld: ", i);
+    //     point_display(points->list[i], stdout);
+    //     fputs("\n", stdout);
+    // }
+
+    fprintf(stdout, "x, y\n");
+    for (double x = 0.0; x < 8.0; x += 0.01) {
+        double y = lagrange_interpolation(points, x);
+        fprintf(stdout, "%.4f, %.4f\n", x, y);
     }
-    return 0;
+
+    points_free(points);
 }

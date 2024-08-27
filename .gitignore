@@ -1,5 +1,2 @@
-*.dat
 *.o
-main
-~*
-vgcore*
+_*

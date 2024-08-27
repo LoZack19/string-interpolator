@@ -3,64 +3,140 @@
 #include <string.h>
 #include <include/interpolation.h>
 
-/* initialize `point` structure */
-struct point* init_point(int x, int y)
+struct point* point_create(int x, int y)
 {
-    struct point* p = malloc(sizeof(struct point));
-    if (!p)
+    struct point* p = malloc(sizeof(*p));
+    if (p == NULL) {
         return NULL;
+    }
     
-    p->x_coord = x;
-    p->y_coord = y;
+    p->x = x;
+    p->y = y;
     return p;
 }
 
-/* free `point` structure */
-void free_point(struct point** p)
+void point_free(struct point* p)
 {
-    if (!p || !(*p))
-        return;
+    free(p);
+}
+
+void point_display(struct point *p, FILE *outfile)
+{
+    fprintf(outfile, "{%d, %d}", p->x, p->y);
+}
+
+struct points *points_create(size_t initial_capacity)
+{
+    struct points *ps;
+
+    ps = malloc(sizeof(*ps));
+    if (ps == NULL) {
+        return NULL;
+    }
+
+    ps->list = malloc(initial_capacity * sizeof(*ps->list));
+    if (ps->list == NULL) {
+        free(ps);
+        return NULL;
+    }
+
+    ps->capacity = initial_capacity;
+    ps->length = 0;
+
+    return ps;
+}
+
+void points_free(struct points* ps)
+{
+    for (size_t i = 0; i < ps->length; i++) {
+        free(ps->list[i]);
+    }
+    free(ps->list);
+    free(ps);
+}
+
+int points_is_full(struct points *ps)
+{
+    return ps->length >= ps->capacity;
+}
+
+int points_is_empty(struct points *ps)
+{
+    return ps->length <= 0;
+}
+
+int points_logresize(struct points *ps)
+{ 
+    const size_t FACTOR = 2;
+
+    struct point **new_list = realloc(ps, ps->capacity * FACTOR * sizeof(*new_list));
+    if (new_list == NULL) {
+        return EXIT_FAILURE;
+    }
+
+    ps->list = new_list;
+    ps->capacity *= FACTOR;
+    return EXIT_SUCCESS;
+}
+
+int points_push(struct points *ps, struct point *p)
+{
+    int err;
     
-    free(*p);
+    if (points_is_full(ps)) {
+        err = points_logresize(ps);
+        if (err != EXIT_SUCCESS) {
+            return err;
+        }
+    }
+
+    ps->list[ps->length] = OWN(p);
+    ps->length += 1;
+
+    return EXIT_SUCCESS;
+}
+
+struct point *points_pop(struct points *ps)
+{
+    if (points_is_empty(ps)) {
+        return NULL;
+    }
+
+    ps->length -= 1;
+    return DISOWN(ps->list[ps->length]);
 }
 
 /* initialize set of points
- *  @1 > regular intervals on x axis
+ *  @1 > if true x = [0, 1, ...] else x has to be specified in the va_list
  *  @2 > number of points
- *  @3 > list of points (va_list) [use init_point_set to specify the list]
+ *  @3 > list of points (va_list) [use init_points to specify the list]
  *  @  < return set of points
  */
-struct point_set* vinit_point_set(const int reg, size_t points_num, va_list list)
+struct points* points_vinit(const bool reg, const size_t points_num, va_list list)
 {
-    struct point_set* points = malloc(sizeof(struct point_set));
-    if (!points)
-        return NULL;
-    
-    points->set = malloc((points_num + 1) * sizeof(struct point*));
-    if (!points->set) {
-        free(points);
-        return NULL;
-    }
-    points->set[0] = calloc(1, sizeof(struct point));
-    if (!points->set[0]) {
-        free(points->set);
-        free(points);
-        return NULL;
-    }
-    points->size = 1;
+    int err;
 
-    for (size_t i = 1; i <= points_num; ++i) {
-        points->set[i] = init_point((reg) ? i : va_arg(list, int), va_arg(list, int));
-        if (!points->set[i]) {
-            points->size = i;
-            free_point_set(&points);
+    struct points *ps = points_create(points_num);
+    if (ps == NULL) {
+        return NULL;
+    }
+
+    for (size_t i = 0; i < points_num; i++) {
+        struct point *p = point_create((reg) ? i : va_arg(list, int), va_arg(list, int));
+        if (p == NULL) {
+            points_free(ps);
+            return NULL;
+        }
+
+        err = points_push(ps, p);
+        if (err != EXIT_SUCCESS) {
+            point_free(p);
+            points_free(ps);
             return NULL;
         }
     }
 
-    points->size = points_num + 1;
-
-    return points;
+    return ps;
 }
 
 /* initialize set of points
@@ -69,83 +145,67 @@ struct point_set* vinit_point_set(const int reg, size_t points_num, va_list list
  *  @3 > list (x, y, x, y ... if not reg) (y, y, y ... if reg)
  *  @  < return set of points
  */
-struct point_set* linit_point_set(int reg, size_t points_num, ...)
+struct points* points_linit(const bool reg, const size_t points_num, ...)
 {
     va_list list;
 
     va_start(list, points_num);
-    return vinit_point_set(reg, points_num, list);
+    return points_vinit(reg, points_num, list);
     va_end(list);
 }
 
-struct point_set* init_point_set(size_t length, int nums[])
+struct points* points_init(const bool reg, const size_t points_num, const int list[])
 {
-    struct point_set* points;
+    int err;
 
-    if(!nums)
-        return NULL;
-    
-    points = malloc(sizeof(struct point_set));
-    if (!points)
-        return NULL;
-    
-    points->set = malloc((length + 1) * sizeof(struct point*));
-    if (!points->set) {
-        free(points);
+    struct points *ps = points_create(points_num);
+    if (ps == NULL) {
         return NULL;
     }
 
-    points->set[0] = init_point(0, 0);
+    for (size_t i = 0; i < points_num; i++) {
+        struct point *p = point_create((reg) ? (int)i : list[i], list[i+1]);
+        if (p == NULL) {
+            points_free(ps);
+            return NULL;
+        }
 
-    for (size_t i = 1; i <= length; ++i) {
-        points->set[i] = init_point(i, nums[i-1]);
-        if (!points->set[i]) {
-            points->size = i;
-            free_point_set(&points);
+        err = points_push(ps, p);
+        if (err != EXIT_SUCCESS) {
+            point_free(p);
+            points_free(ps);
             return NULL;
         }
     }
-    points->size = length + 1;
-    
-    return points;
+
+    return ps;
 }
 
-struct point_set* sinit_point_set(char* string)
+struct points* points_sinit(char* string)
 {
-    int* array;
-    size_t len;
-    struct point_set* points;
+    int err;
 
-    if(!string || !(*string))
+    struct points *ps = points_create(1);
+    if (ps == NULL) {
         return NULL;
-    
-    len = strlen(string);
-    array = malloc(len * sizeof(int));
-    if (!array)
-        return NULL;
-    
-    for (size_t i = 0; i < len; ++i) {
-        array[i] = (int)string[i];
     }
 
-    points = init_point_set(len, array);
+    for (size_t i = 0; string[i] != '\0'; i++) {
+        struct point *p = point_create(i, string[i]);
+        if (p == NULL) {
+            points_free(ps);
+            return NULL;
+        }
 
-    free(array);
-    return points;
-}
-
-void free_point_set(struct point_set** points)
-{
-    if (!points || !(*points))
-        return;
-    
-    for (size_t i = 0; i < (*points)->size; ++i) {
-        free_point(&((*points)->set[i]));
+        err = points_push(ps, p);
+        if (err != EXIT_SUCCESS) {
+            point_free(p);
+            points_free(ps);
+            return NULL;
+        }
     }
-    free((*points)->set);
-    free(*points);
 
-    return;
+    return ps;
 }
 
 /* ----------------------------- */
@@ -156,20 +216,20 @@ void free_point_set(struct point_set** points)
  * @3 > evaluated in x
  * @  < result of the basis polinomial
  */
-double lagrange_basis(struct point_set* points, size_t j, double x)
+double lagrange_basis(struct points* points, size_t j, double x)
 {
-    double temp = 0, res = 1;
+    double res = 1;
 
-    if (!points || !points->set || j > points->size)
-        return 0;
+    if (points == NULL || points->list == NULL || j > points->length)
+        return 0.0;
 
-    for (size_t i = 0; i < points->size; ++i) {
+    for (size_t i = 0; i < points->length; ++i) {
         if (i == j)
             continue;
         
-        temp = points->set[j]->x_coord - points->set[i]->x_coord;
+        double temp = points->list[j]->x - points->list[i]->x;
         if (temp)
-            temp = (x - points->set[i]->x_coord) / temp;
+            temp = (x - points->list[i]->x) / temp;
         else
             return 0;
         res *= temp;
@@ -183,19 +243,19 @@ double lagrange_basis(struct point_set* points, size_t j, double x)
  * @2 > evaluated in x
  * @  < result of the interpolation polinomial in x
  */
-double lagrange_interpolation(struct point_set* points, double x)
+double lagrange_interpolation(struct points* points, double x)
 {
     double res = 1;
 
-    if (points == NULL || points->set == NULL)
-        return 0;
+    if (points == NULL || points->list == NULL)
+        return 0.0;
 
-    for (size_t i = 0; i < points->size; ++i) {
+    for (size_t i = 0; i < points->length; ++i) {
         double temp = lagrange_basis(points, i, x);
         if (temp)
-            temp = points->set[i]->y_coord * temp;
+            temp = points->list[i]->y * temp;
         else
-            return 0;
+            return 0.0;
         res += temp;
     }
 
